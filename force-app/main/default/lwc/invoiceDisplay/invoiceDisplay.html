@@ -1,0 +1,33 @@
+<template>
+    <lightning-card title="Invoice Data">
+        <template if:true={invoiceWrapper}>
+            <div>
+                <h3>Invoice ID: {invoiceWrapper.invoiceId}</h3>
+                <p>Billing Account ID: {invoiceWrapper.billingAccountId}</p>
+                <p>Invoice Date: {invoiceWrapper.invoiceDate}</p>
+                <p>Due Date: {invoiceWrapper.dueDate}</p>
+                
+                <h4>Line Items</h4>
+                <template if:true={invoiceWrapper.lineItems}>
+
+                    <!-- Iterate over lineItems in the invoiceWrapper -->
+                    <template for:each={invoiceWrapper.lineItems} for:item="lineItem">
+                        <div key={lineItem.id}>
+                            <p>Description: {lineItem.lineDescription}</p>
+                            <p>Quantity: {lineItem.quantity}</p>
+                            <p>Unit Price: {lineItem.unitPrice}</p>
+                            <p>Amount: {lineItem.amount}</p>
+                        </div>
+                    </template>
+
+                </template>
+                <template if:false={invoiceWrapper.lineItems}>
+                    <p>No line items found for this invoice.</p>
+                </template>
+            </div>
+        </template>
+        <template if:true={error}>
+            <p>Error: {error}</p>
+        </template>
+    </lightning-card>
+</template>
