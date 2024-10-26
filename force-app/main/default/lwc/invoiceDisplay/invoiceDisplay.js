@@ -5,7 +5,7 @@ import { CurrentPageReference } from 'lightning/navigation';
 export default class InvoiceDisplay extends LightningElement {
     @track params = {};
     @track invoiceWrapper; // Change from invoiceWrapperList to a single invoiceWrapper
-    @track error;
+    @track error; 
 
     // Define columns for the line item datatable (not used anymore since line items are displayed individually)
     columns = [
