@@ -1,57 +1,58 @@
 public with sharing class InvoiceController {
-    @AuraEnabled(cacheable=true)
-    public static InvoiceWrapper getInvoiceData(Map<String, String> params) {
-        // Initialize the wrapper
-        InvoiceWrapper wrapper = new InvoiceWrapper();
+    @AuraEnabled
+    public static String createInvoiceAndLineItems(String params) {
+        Map<String, String> paramMap = (Map<String, String>) JSON.deserializeUntyped(params);
+
+        // Required fields from URL parameters
+        String opportunityId = paramMap.get('origin_record');
+        String accountId = paramMap.get('account');
+        Date invoiceDate = Date.valueOf(paramMap.get('invoice_date'));
+        Date invoiceDueDate = Date.valueOf(paramMap.get('invoice_due_date'));
+        String childRelationshipName = paramMap.get('child_relationship_name');
+        String lineItemDescriptionField = paramMap.get('line_item_description');
+        String lineItemQuantityField = paramMap.get('line_item_quantity');
+        String lineItemUnitPriceField = paramMap.get('line_item_unit_price');
+
+        // Query Opportunity
+        Opportunity opp = [
+            SELECT Id, AccountId
+            FROM Opportunity 
+            WHERE Id = :opportunityId 
+            LIMIT 1
+        ];
+
+        // Create Invoice record
+        Invoice__c invoice = new Invoice__c();
+        invoice.Opportunity__c = opp.Id;
+        invoice.Account__c = accountId != null ? Id.valueOf(accountId) : opp.AccountId;
+        invoice.Invoice_Date__c = invoiceDate;
+        invoice.Due_Date__c = invoiceDueDate;
+        insert invoice;
+
+        // Query Opportunity Line Items dynamically
+        String oppLineItemQuery = 'SELECT Id, ' + lineItemDescriptionField + ', ' + lineItemQuantityField + ', ' + lineItemUnitPriceField +
+            ' FROM ' + childRelationshipName + ' WHERE OpportunityId = :opportunityId';
         
-        // Use a try-catch block for error handling
-        try {
-            // Extract parameters from the incoming map
-            String originRecordId = params.get('origin_record');
-
-            // Query invoices where BillingAccountId is not null and match the originRecordId
-            List<Invoice__c> invoices = [
-                SELECT Id, AccountId__c, Invoice_Date__c, Due_Date__c,
-                       (SELECT Id, Line_Description__c, Quantity__c, Unit_Price__c FROM Line_Items__r)
-                FROM Invoice__c
-                WHERE AccountId__c != null
-                AND Id = :originRecordId
-                LIMIT 1 // Assuming we want to fetch only one invoice
-            ];
-
-            // Check if any invoices were returned
-            if (!invoices.isEmpty()) {
-                Invoice__c invoice = invoices[0]; // Get the first invoice
-
-                // Populate the wrapper fields
-                wrapper.invoiceId = invoice.Id;
-                wrapper.billingAccountId = invoice.AccountId__c;
-                wrapper.invoiceDate = invoice.Invoice_Date__c;
-                wrapper.dueDate = invoice.Due_Date__c;
-
-                // Initialize the lineItems list
-                wrapper.lineItems = new List<InvoiceWrapper.LineItemWrapper>();
-
-                // Populate line items from the InvoiceLines relationship
-                for (InvoiceLine lineItem : invoice.Line_Items__r) {
-                    InvoiceWrapper.LineItemWrapper lineItemWrapper = new InvoiceWrapper.LineItemWrapper();
-                    lineItemWrapper.id = lineItem.Id;
-                    lineItemWrapper.lineDescription = lineItem.Line_Description__c;
-                    lineItemWrapper.quantity = lineItem.Quantity__c;
-                    lineItemWrapper.unitPrice = lineItem.Unit_Price__c;
-                    lineItemWrapper.amount = lineItem.Amount__c; 
-
-                    // Add the line item wrapper to the list
-                    wrapper.lineItems.add(lineItemWrapper);
-                }
-            }
-        } catch (Exception e) {
-            // Log the error and return a user-friendly message
-            System.debug('Error fetching invoice data: ' + e.getMessage());
-            // Optionally, you could throw a custom exception or return an error wrapper
-            throw new AuraHandledException('An error occurred while retrieving invoice data. Please try again later.');
+        List<SObject> oppLineItems = Database.query(oppLineItemQuery);
+        List<Line_Item__c> lineItems = new List<Line_Item__c>();
+        
+        // Create Line Items associated with the Invoice
+        for (SObject lineItem : oppLineItems) {
+            Line_Item__c newItem = new Line_Item__c();
+            newItem.Invoice__c = invoice.Id;
+            newItem.Description__c = (String)lineItem.get(lineItemDescriptionField);
+            newItem.Quantity__c = (Decimal)lineItem.get(lineItemQuantityField);
+            newItem.Unit_Price__c = (Decimal)lineItem.get(lineItemUnitPriceField);
+            lineItems.add(newItem);
         }
         
-        return wrapper; // Return the populated wrapper
+        insert lineItems;
+
+        // Generate JSON response with created records
+        Map<String, Object> resultMap = new Map<String, Object>();
+        resultMap.put('Invoice', invoice);
+        resultMap.put('LineItems', lineItems);
+        
+        return JSON.serialize(resultMap);
     }
 }

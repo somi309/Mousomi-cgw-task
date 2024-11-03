@@ -1,0 +1,13 @@
+<template>
+    <lightning-card title="Invoice Creation Result" icon-name="standard:invoice">
+        <template if:true={result}>
+            <h3>Invoice and Line Items Created Successfully</h3>
+            <pre>{result}</pre>
+        </template>
+
+        <template if:true={error}>
+            <h3>Error</h3>
+            <pre>{error}</pre>
+        </template>
+    </lightning-card>
+</template>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata" fqn="InvoiceCreateComponent">
+    <apiVersion>58.0</apiVersion> <!-- Set to the latest API version available -->
+    <isExposed>true</isExposed>
+    <targets>
+        <!-- Expose the component as a standalone app page -->
+        <target>lightning__AppPage</target>
+        <!-- Allow the component to be added to the record page of any object -->
+        <target>lightning__RecordPage</target>
+        <!-- Allow the component to be added to the Home page -->
+        <target>lightning__HomePage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <!-- Allow the component to be used specifically on the Opportunity record page -->
+            <objects>
+                <object>Opportunity</object>
+            </objects>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
